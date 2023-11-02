@@ -910,7 +910,9 @@ class BertModel(BertPreTrainedModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
+
     ):
+        # 2023-10-25增加 output_all_encoded_layers=True
         r"""
         encoder_hidden_states  (:obj:`torch.FloatTensor` of shape :obj:`(batch_size, sequence_length, hidden_size)`, `optional`):
             Sequence of hidden-states at the output of the last layer of the encoder. Used in the cross-attention if
@@ -1010,13 +1012,18 @@ class BertModel(BertPreTrainedModel):
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
+
         )
+        #2023-10-25增加 output_all_encoded_layers=output_all_encoded_layers
         sequence_output = encoder_outputs[0]
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
 
         if not return_dict:
             return (sequence_output, pooled_output) + encoder_outputs[1:]
-
+        # if not output_all_encoded_layers:
+        #     encoder_outputs = encoder_outputs[-1]
+        # 2023-10-25新增if not output_all_encoded_layers:
+        # return encoder_outputs, pooled_output
         return BaseModelOutputWithPoolingAndCrossAttentions(
             last_hidden_state=sequence_output,
             pooler_output=pooled_output,
@@ -1025,6 +1032,9 @@ class BertModel(BertPreTrainedModel):
             attentions=encoder_outputs.attentions,
             cross_attentions=encoder_outputs.cross_attentions,
         )
+    #2023-10-25 删除 return BaseModelOutputWithPoolingAndCrossAttentions
+    # 新增        return encoder_outputs, pooled_output
+
 
 
 @add_start_docstrings(
@@ -1064,7 +1074,9 @@ class BertForPreTraining(BertPreTrainedModel):
         output_attentions=None,
         output_hidden_states=None,
         return_dict=None,
+
     ):
+        # 2023-10-15新增masked_lm_labels=None,
         r"""
         labels (:obj:`torch.LongTensor` of shape ``(batch_size, sequence_length)``, `optional`):
             Labels for computing the masked language modeling loss. Indices should be in ``[-100, 0, ...,
