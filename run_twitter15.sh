@@ -9,7 +9,8 @@
 # save_path: model saved path
 
 DATASET_NAME="twitter15"
-BERT_NAME="bert-base-uncased"
+#BERT_NAME="bert-base-uncased"
+BERT_NAME="/home/nlp/code/HVPNeT/bert_base_uncased"
 
 lr=3e-5
 

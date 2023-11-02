@@ -7,3 +7,16 @@ torchvision==0.8.2
 torch==1.7.1
 scikit-learn==1.0
 seqeval==1.2.2
+
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple torch
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple torchvision
+
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple transformers==4.11.3
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple tensorboardX==2.4
+
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple TorchCRF==1.1.0
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple wandb==0.12.1
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple scikit-learn==1.0
+pip install -i https://pypi.tuna.tsinghua.edu.cn/simple pytorch==1.12.1 torchvision==0.13.1
+
+

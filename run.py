@@ -1,9 +1,9 @@
 import os
+# os.environ['CUDA_VISIBLE_DEVICES'] = '4,5,6,7'
 import argparse
 import logging
 import sys
 sys.path.append("..")
-
 import torch
 import numpy as np
 import random
@@ -116,11 +116,13 @@ def set_seed(seed=2021):
     random.seed(seed)
 
 def main():
+    # parser = argparse.ArgumentParser()
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_name', default='twitter15', type=str, help="The name of dataset.")
-    parser.add_argument('--bert_name', default='bert-base-uncased', type=str, help="Pretrained language model path")
+    parser.add_argument('--bert_name', default='/home/nlp/code/HVPNeT/bert_base_uncased', type=str, help="Pretrained language model path")
     parser.add_argument('--num_epochs', default=30, type=int, help="num training epochs")
-    parser.add_argument('--device', default='cuda', type=str, help="cuda or cpu")
+    # parser.add_argument('--device', default='cpu', type=str, help="cuda or cpu") #测试用
+    parser.add_argument('--device', default='cuda:7', type=str, help="cuda or cpu")   #训练用
     parser.add_argument('--batch_size', default=32, type=int, help="batch size")
     parser.add_argument('--lr', default=1e-5, type=float, help="learning rate")
     parser.add_argument('--warmup_ratio', default=0.01, type=float)
@@ -138,7 +140,8 @@ def main():
     parser.add_argument('--max_seq', default=128, type=int)
     parser.add_argument('--ignore_idx', default=-100, type=int)
     parser.add_argument('--sample_ratio', default=1.0, type=float, help="only for low resource.")
-
+    parser.add_argument('--fine_tune_cnn', action='store_true', help='fine tune pre-trained CNN if True')
+    parser.add_argument('--resnet_root', default='./resnet', help='path the pre-trained cnn models')
     args = parser.parse_args()
 
     data_path, img_path, aux_path = DATA_PATH[args.dataset_name], IMG_PATH[args.dataset_name], AUX_PATH[args.dataset_name]
@@ -185,8 +188,8 @@ def main():
     else:   # NER task
         label_mapping = processor.get_label_mapping()
         label_list = list(label_mapping.keys())
-        model = HMNeTNERModel(label_list, args)
-
+        model = HMNeTNERModel(args.bert_name,label_list, args, layer_num1=1)
+        # 2023-10-25新增'/home/nlp/code/HVPNeT/bert_base_uncased'layer_num1=1
         trainer = Trainer(train_data=train_dataloader, dev_data=dev_dataloader, test_data=test_dataloader, model=model, label_map=label_mapping, args=args, logger=logger, writer=writer)
 
     if args.do_train:
