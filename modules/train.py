@@ -7,7 +7,11 @@ from seqeval.metrics import classification_report
 from transformers.optimization import get_linear_schedule_with_warmup
 
 from .metrics import eval_result
-
+import resnet.resnet as resnet
+from resnet.resnet_utils import myResnet
+import os
+# os.environ['CUDA_VISIBLE_DEVICES'] = '4,5,6,7'
+import torch.nn as nn
 class BaseTrainer(object):
     def train(self):
         raise NotImplementedError()
@@ -254,7 +258,15 @@ class NERTrainer(BaseTrainer):
             self.multiModal_before_train()
         else:
             self.bert_before_train()
-
+        net = getattr(resnet, 'resnet152')()
+        net.load_state_dict(torch.load(os.path.join(self.args.resnet_root, 'resnet152-b121ed2d.pth')))
+        encoder = myResnet(net, False, self.args.device)
+        # 2023-10-26新增并行
+        # if torch.cuda.device_count() > 1:
+        #     print("Let's use encoder", torch.cuda.device_count(), "GPUs!")
+        #     encoder = nn.DataParallel(encoder)
+        # 2023-10-26新增并行
+        encoder.to(self.args.device)
         self.step = 0
         self.model.train()
         self.logger.info("***** Running training *****")
@@ -278,7 +290,25 @@ class NERTrainer(BaseTrainer):
                 for batch in self.train_data:
                     self.step += 1
                     batch = (tup.to(self.args.device)  if isinstance(tup, torch.Tensor) else tup for tup in batch)
-                    attention_mask, labels, logits, loss = self._step(batch, mode="train")
+                    # 2023-10-25新增
+                    if self.args.use_prompt:
+                        input_ids, token_type_ids, attention_mask, labels, images, aux_imgs = batch
+                        print()
+                        imgs_f, img_mean, img_att = encoder(images)
+                    else:
+                        images, aux_imgs = None, None
+                        input_ids, token_type_ids, attention_mask, labels = batch
+
+                    output = self.model(input_ids=input_ids, attention_mask=attention_mask,
+                                        token_type_ids=token_type_ids, labels=labels, images=images, aux_imgs=aux_imgs
+                                        , visual_embeds_mean=imgs_f, visual_embeds_att=img_att, temp=0.179,
+                                        temp_lamb=0.7, lamb=0.62, negative_rate=16)
+                    # output = self.model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, labels=labels, images=images,aux_imgs=None)
+
+                    logits, loss = output.logits, output.loss
+                    attention_mask, labels, logits, loss = attention_mask, labels, logits, loss
+                    # 2023-10-25新增
+                    # attention_mask, labels, logits, loss = self._step(batch, mode="train")
                     avg_loss += loss.detach().cpu().item()
 
                     loss.backward()
@@ -456,10 +486,20 @@ class NERTrainer(BaseTrainer):
     def _step(self, batch, mode="train"):
         if self.args.use_prompt:
             input_ids, token_type_ids, attention_mask, labels, images, aux_imgs = batch
+            print()
+            net = getattr(resnet, 'resnet152')()
+            net.load_state_dict(torch.load(os.path.join(self.args.resnet_root, 'resnet152-b121ed2d.pth')))
+            encoder = myResnet(net, False, self.args.device)
+            encoder.to(self.args.device)
+            imgs_f, img_mean, img_att = encoder(images)
         else:
             images, aux_imgs = None, None
             input_ids, token_type_ids, attention_mask, labels = batch
-        output = self.model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, labels=labels, images=images, aux_imgs=aux_imgs)
+
+        output = self.model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, labels=labels, images=images, aux_imgs=aux_imgs
+                            ,visual_embeds_mean=imgs_f, visual_embeds_att=img_att,temp=0.179,temp_lamb=0.7,lamb=0.62, negative_rate=16)
+        # output = self.model(input_ids=input_ids, attention_mask=attention_mask, token_type_ids=token_type_ids, labels=labels, images=images,aux_imgs=None)
+
         logits, loss = output.logits, output.loss
         return attention_mask, labels, logits, loss
 
